@@ -51,12 +51,6 @@ export default function MainCard({
     }
   }, [username, repo]);
 
-  useEffect(() => {
-    if (loading) {
-      setActiveDropdown(null);
-    }
-  }, [loading]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -127,6 +121,7 @@ export default function MainCard({
                       }`}
                       onClick={(e) => {
                         e.preventDefault();
+                        setActiveDropdown(null);
                         if (isExampleRepoSelected) return;
                         onRegenerate();
                       }}
@@ -158,10 +153,11 @@ export default function MainCard({
                   )}
                   {lastGenerated && (
                     <>
-                      <label className="font-medium text-black">
+                      <label htmlFor="zoom-toggle" className="font-medium text-black">
                         Enable Zoom
                       </label>
                       <Switch
+                        id="zoom-toggle"
                         checked={zoomingEnabled}
                         onCheckedChange={onZoomToggle}
                       />

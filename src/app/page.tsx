@@ -1,5 +1,12 @@
 import MainCard from "~/components/main-card";
 import Hero from "~/components/hero";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "GitDiagram - Visualize Any GitHub Repository",
+  description:
+    "Turn any GitHub repository into an interactive architecture diagram for quick codebase understanding.",
+};
 
 export default function HomePage() {
   return (

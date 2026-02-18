@@ -50,9 +50,10 @@ export function Header() {
           </span>
         </Link>
         <nav className="flex items-center gap-3 sm:gap-6">
-          <span
+          <button
+            type="button"
             onClick={() => setIsApiKeyDialogOpen(true)}
-            className="cursor-pointer text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600"
+            className="text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600"
           >
             <span className="flex items-center sm:hidden">
               <span>API Key</span>
@@ -60,14 +61,15 @@ export function Header() {
             <span className="hidden items-center gap-1 sm:flex">
               <span>API Key</span>
             </span>
-          </span>
-          <span
+          </button>
+          <button
+            type="button"
             onClick={() => setIsPrivateReposDialogOpen(true)}
-            className="cursor-pointer text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600"
+            className="text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600"
           >
             <span className="sm:hidden">Private Repos</span>
             <span className="hidden sm:inline">Private Repos</span>
-          </span>
+          </button>
           <Link
             href="https://github.com/ahmedkhaleel2004/gitdiagram"
             className="flex items-center gap-1 text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600 sm:gap-2"
