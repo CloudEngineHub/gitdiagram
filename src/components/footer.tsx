@@ -8,7 +8,7 @@ export function Footer() {
         <span className="text-sm font-medium text-black">
           Made by{" "}
           <Link
-            href="https://ahmedkhaleel.dev"
+            href="https://ahmedkhaleel.com"
             className="text-purple-600 hover:underline"
           >
             Ahmed Khaleel
