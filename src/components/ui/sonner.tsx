@@ -15,13 +15,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast:
-            "toast !bg-purple-100 !text-black !shadow-[3px_3px_0_0_#000000] !border-[2px] !border-black !rounded-md !p-3 !flex !items-center !justify-between !gap-4",
+            "toast !bg-neutral-100 dark:!bg-neutral-900 !text-black dark:!text-neutral-100 !shadow-[3px_3px_0_0_#000000] !border-[2px] !border-black !rounded-md !p-3 !flex !items-center !justify-between !gap-4",
           title: "font-bold text-base m-0",
-          description: "text-muted-foreground",
+          description: "text-muted-foreground dark:!text-neutral-300",
           actionButton:
-            "!bg-purple-200 !border-[2px] !border-solid !border-black !py-[14px] !px-6 !text-lg !text-black hover:!bg-purple-300 !transition-colors !cursor-pointer",
+            "!bg-neutral-200 dark:!bg-neutral-200 !border-[2px] !border-solid !border-black !py-[14px] !px-6 !text-lg !text-black hover:!bg-neutral-300 !transition-colors !cursor-pointer",
           cancelButton:
-            "text-neutral-500 underline hover:text-neutral-700",
+            "text-neutral-600 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200",
         },
         duration: 5000,
       }}

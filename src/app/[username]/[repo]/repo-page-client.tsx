@@ -70,11 +70,11 @@ export default function RepoPageClient({ username, repo }: RepoPageClientProps) 
           />
         ) : error || state.error ? (
           <div className="mt-12 text-center">
-            <p className="max-w-4xl text-lg font-medium text-purple-600">
+            <p className="max-w-4xl text-lg font-medium text-red-700 dark:text-red-300">
               {error || state.error}
             </p>
             {state.parserError && (
-              <pre className="mx-auto mt-4 max-w-4xl overflow-x-auto whitespace-pre-wrap rounded-md border border-purple-200 bg-purple-50 p-4 text-left text-xs text-purple-700">
+              <pre className="mx-auto mt-4 max-w-4xl overflow-x-auto whitespace-pre-wrap rounded-md border border-neutral-300 bg-neutral-100 p-4 text-left text-xs text-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
                 {state.parserError}
               </pre>
             )}

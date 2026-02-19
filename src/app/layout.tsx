@@ -76,15 +76,19 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable}`}>
-      <CSPostHogProvider>
-        <body className="flex min-h-screen flex-col">
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${GeistSans.variable}`}
+    >
+      <body className="flex min-h-screen flex-col">
+        <CSPostHogProvider>
           <Header />
           <main className="flex-grow">{children}</main>
           <Footer />
           <Toaster />
-        </body>
-      </CSPostHogProvider>
+        </CSPostHogProvider>
+      </body>
     </html>
   );
 }

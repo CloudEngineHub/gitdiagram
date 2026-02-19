@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from typing import AsyncGenerator, Literal
-import json
+import math
 import os
 
-import aiohttp
-import tiktoken
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from app.utils.format_message import format_user_message
 
@@ -19,102 +17,99 @@ ReasoningEffort = Literal["low", "medium", "high"]
 class OpenAIService:
     def __init__(self):
         self.default_api_key = os.getenv("OPENAI_API_KEY")
-        self.encoding = tiktoken.get_encoding("o200k_base")
-        self.base_url = "https://api.openai.com/v1/chat/completions"
 
     def _resolve_api_key(self, override_api_key: str | None = None) -> str:
-        api_key = override_api_key or self.default_api_key
+        api_key = (override_api_key or self.default_api_key or "").strip()
         if not api_key:
             raise ValueError(
                 "Missing OpenAI API key. Set OPENAI_API_KEY or provide api_key in request."
             )
         return api_key
 
-    def completion(
-        self,
-        *,
-        model: str,
-        system_prompt: str,
-        data: dict,
-        api_key: str | None = None,
-        reasoning_effort: ReasoningEffort | None = None,
-    ) -> str:
-        user_message = format_user_message(data)
-        client = OpenAI(api_key=self._resolve_api_key(api_key))
-        payload: dict = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-            "max_completion_tokens": 12000,
-            "temperature": 0.2,
-        }
-        if reasoning_effort:
-            payload["reasoning_effort"] = reasoning_effort
+    @staticmethod
+    def estimate_tokens(text: str) -> int:
+        # Mirrors Next.js fallback heuristic.
+        return math.ceil(len(text) / 4)
 
-        completion = client.chat.completions.create(**payload)
-        content = completion.choices[0].message.content
-        if content is None:
-            raise ValueError(f"No content returned from OpenAI model {model}")
-        return content
+    @staticmethod
+    def _build_input(system_prompt: str, user_prompt: str) -> list[dict]:
+        return [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+    @staticmethod
+    def _create_client(api_key: str) -> AsyncOpenAI:
+        # Keep explicit config local to this service.
+        return AsyncOpenAI(
+            api_key=api_key,
+            max_retries=2,
+            timeout=600,
+        )
 
     async def stream_completion(
         self,
         *,
         model: str,
         system_prompt: str,
-        data: dict,
+        data: dict[str, str | None],
         api_key: str | None = None,
         reasoning_effort: ReasoningEffort | None = None,
+        max_output_tokens: int | None = None,
     ) -> AsyncGenerator[str, None]:
-        user_message = format_user_message(data)
+        user_prompt = format_user_message(data)
         resolved_api_key = self._resolve_api_key(api_key)
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {resolved_api_key}",
-        }
         payload: dict = {
             "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-            "max_completion_tokens": 12000,
             "stream": True,
+            "input": self._build_input(system_prompt, user_prompt),
         }
         if reasoning_effort:
-            payload["reasoning_effort"] = reasoning_effort
+            payload["reasoning"] = {"effort": reasoning_effort}
+        if max_output_tokens:
+            payload["max_output_tokens"] = max_output_tokens
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                self.base_url,
-                headers=headers,
-                json=payload,
-            ) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    raise ValueError(
-                        f"OpenAI API returned status code {response.status}: {error_text}"
-                    )
+        client = self._create_client(resolved_api_key)
+        stream = await client.responses.create(**payload)
+        try:
+            async for event in stream:
+                if event.type == "response.output_text.delta":
+                    delta = getattr(event, "delta", None)
+                    if isinstance(delta, str) and delta:
+                        yield delta
+                    continue
 
-                async for line in response.content:
-                    parsed = line.decode("utf-8").strip()
-                    if not parsed or not parsed.startswith("data: "):
-                        continue
-                    if parsed == "data: [DONE]":
-                        break
-                    try:
-                        data_json = json.loads(parsed[6:])
-                        content = (
-                            data_json.get("choices", [{}])[0]
-                            .get("delta", {})
-                            .get("content")
-                        )
-                        if content:
-                            yield content
-                    except json.JSONDecodeError:
-                        continue
+                if event.type == "error":
+                    message = getattr(event, "message", None) or "OpenAI stream failed."
+                    raise ValueError(str(message))
+        finally:
+            await stream.close()
+            await client.close()
 
-    def count_tokens(self, prompt: str) -> int:
-        return len(self.encoding.encode(prompt))
+    async def count_input_tokens(
+        self,
+        *,
+        model: str,
+        system_prompt: str,
+        data: dict[str, str | None],
+        api_key: str | None = None,
+        reasoning_effort: ReasoningEffort | None = None,
+    ) -> int:
+        user_prompt = format_user_message(data)
+        resolved_api_key = self._resolve_api_key(api_key)
+        payload: dict = {
+            "model": model,
+            "input": self._build_input(system_prompt, user_prompt),
+        }
+        if reasoning_effort:
+            payload["reasoning"] = {"effort": reasoning_effort}
+
+        client = self._create_client(resolved_api_key)
+        try:
+            response = await client.responses.input_tokens.count(**payload)
+            input_tokens = getattr(response, "input_tokens", None)
+            if not isinstance(input_tokens, int):
+                raise ValueError("OpenAI input token count returned invalid payload.")
+            return input_tokens
+        finally:
+            await client.close()

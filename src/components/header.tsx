@@ -6,6 +6,7 @@ import { FaGithub } from "react-icons/fa";
 import { getStarCount } from "~/app/_actions/github";
 import { PrivateReposDialog } from "./private-repos-dialog";
 import { ApiKeyDialog } from "./api-key-dialog";
+import { ThemeToggle } from "./theme-toggle";
 
 export function Header() {
   const [isPrivateReposDialogOpen, setIsPrivateReposDialogOpen] =
@@ -37,14 +38,14 @@ export function Header() {
   };
 
   return (
-    <header className="border-b-[3px] border-black">
+    <header className="border-b-[3px] border-black dark:border-[#0f131a] dark:bg-[linear-gradient(90deg,#1a2029,#232b37)]">
       <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4 sm:px-8">
         <Link href="/" className="flex items-center">
           <span className="text-lg font-semibold sm:text-xl">
-            <span className="text-black transition-colors duration-200 hover:text-gray-600">
+            <span className="text-black transition-colors duration-200 hover:text-gray-600 dark:text-white dark:hover:text-[hsl(var(--neo-button-hover))]">
               Git
             </span>
-            <span className="text-purple-600 transition-colors duration-200 hover:text-purple-500">
+            <span className="text-purple-600 transition-colors duration-200 hover:text-purple-500 dark:text-[hsl(var(--neo-button))] dark:hover:text-[hsl(var(--neo-button-hover))]">
               Diagram
             </span>
           </span>
@@ -53,7 +54,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => setIsApiKeyDialogOpen(true)}
-            className="text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600"
+            className="text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600 dark:text-neutral-200 dark:hover:text-[hsl(var(--neo-link-hover))]"
           >
             <span className="flex items-center sm:hidden">
               <span>API Key</span>
@@ -65,22 +66,23 @@ export function Header() {
           <button
             type="button"
             onClick={() => setIsPrivateReposDialogOpen(true)}
-            className="text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600"
+            className="text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600 dark:text-neutral-200 dark:hover:text-[hsl(var(--neo-link-hover))]"
           >
             <span className="sm:hidden">Private Repos</span>
             <span className="hidden sm:inline">Private Repos</span>
           </button>
           <Link
             href="https://github.com/ahmedkhaleel2004/gitdiagram"
-            className="flex items-center gap-1 text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600 sm:gap-2"
+            className="flex items-center gap-1 text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600 dark:text-neutral-200 dark:hover:text-[hsl(var(--neo-link-hover))] sm:gap-2"
           >
             <FaGithub className="h-5 w-5" />
             <span className="hidden sm:inline">GitHub</span>
           </Link>
-          <span className="flex items-center gap-1 text-sm font-medium text-black">
-            <span className="text-amber-400">★</span>
+          <span className="flex items-center gap-1 text-sm font-medium text-black dark:text-neutral-200">
+            <span className="text-amber-400 dark:text-[hsl(var(--neo-link))]">★</span>
             {formatStarCount(starCount)}
           </span>
+          <ThemeToggle />
         </nav>
 
         <PrivateReposDialog

@@ -27,32 +27,56 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    --neo-panel: 270 100% 92%;
+    --neo-panel-muted: 270 95% 88%;
+    --neo-button: 270 97% 75%;
+    --neo-button-hover: 271 90% 80%;
+    --neo-subtle: 0 0% 98%;
+    --neo-subtle-muted: 0 0% 93%;
+    --neo-link: 271 81% 55%;
+    --neo-link-hover: 271 70% 48%;
+    --neo-soft-text: 220 13% 30%;
+    --neo-dot-active: 271 81% 55%;
+    --neo-dot-inactive: 271 46% 78%;
+    --neo-input-bg: 270 92% 89%;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --background: 222 18% 14%;
+    --foreground: 212 24% 92%;
+    --card: 222 17% 18%;
+    --card-foreground: 212 24% 92%;
+    --popover: 222 17% 18%;
+    --popover-foreground: 212 24% 92%;
+    --primary: 212 24% 92%;
+    --primary-foreground: 222 18% 14%;
+    --secondary: 221 14% 24%;
+    --secondary-foreground: 212 24% 92%;
+    --muted: 221 14% 24%;
+    --muted-foreground: 210 14% 72%;
+    --accent: 221 16% 26%;
+    --accent-foreground: 212 24% 92%;
+    --destructive: 0 62.8% 40%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 221 14% 34%;
+    --input: 221 14% 30%;
+    --ring: 196 72% 68%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --neo-panel: 222 19% 19%;
+    --neo-panel-muted: 221 16% 24%;
+    --neo-button: 194 72% 64%;
+    --neo-button-hover: 194 78% 72%;
+    --neo-subtle: 39 58% 71%;
+    --neo-subtle-muted: 38 38% 58%;
+    --neo-link: 40 88% 68%;
+    --neo-link-hover: 48 95% 76%;
+    --neo-soft-text: 212 18% 82%;
+    --neo-dot-active: 194 72% 64%;
+    --neo-dot-inactive: 220 10% 44%;
+    --neo-input-bg: 222 20% 16%;
   }
 }
 @layer base {
@@ -66,11 +90,99 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+
+  .dark body {
+    background-image:
+      radial-gradient(
+        circle at 14% 20%,
+        hsl(194 72% 50% / 0.14) 0%,
+        transparent 38%
+      ),
+      radial-gradient(
+        circle at 84% 78%,
+        hsl(39 88% 60% / 0.12) 0%,
+        transparent 36%
+      ),
+      linear-gradient(145deg, #171b22 0%, #202632 45%, #1a1f28 100%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .neo-panel {
+    border: 3px solid #000 !important;
+    background: linear-gradient(
+      165deg,
+      hsl(var(--neo-panel)) 0%,
+      hsl(var(--neo-panel-muted)) 100%
+    ) !important;
+    box-shadow: 8px 8px 0 0 #000 !important;
+    color: hsl(var(--foreground));
+  }
+
+  .neo-button {
+    border: 3px solid #000 !important;
+    background: hsl(var(--neo-button)) !important;
+    color: #000;
+    box-shadow: 4px 4px 0 0 #000 !important;
+    transition:
+      transform 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .neo-button:hover:not(:disabled) {
+    background: hsl(var(--neo-button-hover)) !important;
+    transform: translate(-2px, -2px);
+  }
+
+  .neo-button-muted {
+    border: 3px solid #000 !important;
+    background: hsl(var(--neo-subtle-muted)) !important;
+    color: #000;
+    box-shadow: 4px 4px 0 0 #000 !important;
+    transition:
+      transform 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .neo-button-muted:hover:not(:disabled) {
+    background: hsl(var(--neo-subtle)) !important;
+    transform: translate(-2px, -2px);
+  }
+
+  .neo-input {
+    border: 3px solid #000 !important;
+    box-shadow: 4px 4px 0 0 #000 !important;
+    background: hsl(var(--neo-input-bg)) !important;
+    color: hsl(var(--foreground));
+  }
+
+  .neo-link {
+    color: hsl(var(--neo-link));
+    transition: color 0.2s ease;
+  }
+
+  .neo-link:hover {
+    color: hsl(var(--neo-link-hover));
+  }
+
+  .dark .neo-panel,
+  .dark .neo-button,
+  .dark .neo-button-muted,
+  .dark .neo-input {
+    border-color: #0f131a !important;
+    box-shadow: 7px 7px 0 0 #10151d !important;
+  }
+
+  .dark .neo-button,
+  .dark .neo-button-muted {
+    color: #0b1115;
+  }
 }
 
 .star-reminder-toast [data-button],
 .star-reminder-toast button {
-  background: #e9d5ff !important;
+  background: hsl(var(--neo-button)) !important;
   color: #000 !important;
   border: 2px solid #000 !important;
   cursor: pointer !important;
@@ -78,5 +190,5 @@
 
 .star-reminder-toast [data-button]:hover,
 .star-reminder-toast button:hover {
-  background: #d8b4fe !important;
+  background: hsl(var(--neo-button-hover)) !important;
 }
