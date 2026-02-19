@@ -1,16 +1,16 @@
 # Local Development Setup
 
-This project now runs generation through Next.js Route Handlers on Vercel.
+This project runs generation primarily through the FastAPI backend in `backend/` (Railway in production).
 
-Legacy FastAPI backend remains in `backend/` for reference/self-hosting.
+Next.js Route Handlers under `/api/generate/*` remain available as an optional fallback path.
 
 ## 1) Install tool versions
 
 Recommended versions:
 - Node.js: `22.x` (see `.nvmrc`)
 - pnpm: `9.13.0`
-- Python: `3.12.x` (only needed if you run legacy backend)
-- uv: `0.5.24+` (only needed if you run legacy backend)
+- Python: `3.12.x` (required for FastAPI backend work)
+- uv: `0.5.24+` (required for FastAPI backend work)
 - Docker: latest stable
 
 Install/check:
@@ -26,7 +26,7 @@ docker --version
 Expected:
 - Node starts with `v22`
 - pnpm prints `9.13.0` (or compatible in the same series)
-- Python starts with `3.12` (legacy backend only)
+- Python starts with `3.12`
 
 ## 2) Install frontend dependencies
 
@@ -34,7 +34,7 @@ Expected:
 pnpm install
 ```
 
-## 3) (Optional) Sync legacy backend dependencies with uv
+## 3) Sync backend dependencies with uv
 
 ```bash
 cd backend
@@ -43,7 +43,6 @@ cd ..
 ```
 
 This creates `backend/.venv` and installs pinned Python dependencies from `backend/uv.lock`.
-Skip this section if you are only running the Next.js backend.
 
 ## 4) Configure environment variables
 
@@ -59,7 +58,7 @@ Optional:
 - `OPENAI_MODEL` (single model used for all generation stages)
 - `GITHUB_PAT`
 - `NEXT_PUBLIC_POSTHOG_KEY`
-- `NEXT_PUBLIC_USE_LEGACY_BACKEND=true` and `NEXT_PUBLIC_API_DEV_URL` (only if you want to call legacy backend instead of `/api/generate/*`)
+- `NEXT_PUBLIC_USE_LEGACY_BACKEND=true` and `NEXT_PUBLIC_API_DEV_URL` (to route frontend calls to an external backend such as Railway/local FastAPI)
 
 ## 5) Start local services
 
@@ -76,13 +75,13 @@ Push schema:
 pnpm db:push
 ```
 
-Start frontend (includes Next.js API backend):
+Start frontend:
 
 ```bash
 pnpm dev
 ```
 
-Optional: run legacy backend for comparison/testing:
+Start FastAPI backend (recommended for production parity):
 
 ```bash
 docker-compose up --build -d
@@ -95,6 +94,10 @@ or
 pnpm dev:backend
 ```
 
+If the FastAPI backend is running locally at `http://localhost:8000`, set:
+- `NEXT_PUBLIC_USE_LEGACY_BACKEND=true`
+- `NEXT_PUBLIC_API_DEV_URL=http://localhost:8000`
+
 ## 6) Verification commands
 
 Run all baseline checks:
@@ -105,7 +108,7 @@ pnpm test
 pnpm build
 ```
 
-Legacy backend checks (optional):
+FastAPI backend checks:
 
 ```bash
 cd backend

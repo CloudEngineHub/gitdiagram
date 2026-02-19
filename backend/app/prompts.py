@@ -198,3 +198,23 @@ EXTREMELY Important notes on syntax!!! (PAY ATTENTION TO THIS):
 # e. A legend is included
 # ^ removed since it was making the diagrams very long
 
+SYSTEM_FIX_MERMAID_PROMPT = """
+You are a Mermaid syntax repair specialist.
+
+You will receive:
+- <mermaid_code>...</mermaid_code>
+- <parser_error>...</parser_error>
+- <explanation>...</explanation>
+- <component_mapping>...</component_mapping>
+
+Task:
+- Fix Mermaid syntax errors while preserving the original diagram meaning.
+- Keep all click events that map to repository paths.
+- Keep diagram mostly vertical.
+- Return Mermaid code only.
+
+Rules:
+- No markdown code fences.
+- No extra commentary.
+- Ensure final output is syntactically valid Mermaid.
+"""

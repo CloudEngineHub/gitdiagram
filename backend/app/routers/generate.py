@@ -1,169 +1,254 @@
-from functools import lru_cache
+from __future__ import annotations
+
 import asyncio
 import json
 import re
+from typing import Any
 
 from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse
-from openai import RateLimitError
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field, ValidationError
 
-from app.core.errors import api_error, api_success
 from app.core.observability import Timer, log_event
 from app.prompts import (
     SYSTEM_FIRST_PROMPT,
+    SYSTEM_FIX_MERMAID_PROMPT,
     SYSTEM_SECOND_PROMPT,
     SYSTEM_THIRD_PROMPT,
 )
 from app.services.github_service import GitHubService
+from app.services.mermaid_service import format_validation_feedback, validate_mermaid_syntax
+from app.services.model_config import get_model
 from app.services.openai_service import OpenAIService
+from app.services.pricing import estimate_text_token_cost_usd
 
 router = APIRouter(prefix="/generate", tags=["OpenAI"])
 
 openai_service = OpenAIService()
 
-
-@lru_cache(maxsize=100)
-def get_cached_github_data(username: str, repo: str, github_pat: str | None = None):
-    github_service = GitHubService(pat=github_pat)
-
-    default_branch = github_service.get_default_branch(username, repo) or "main"
-    file_tree = github_service.get_github_file_paths_as_list(username, repo)
-    readme = github_service.get_github_readme(username, repo)
-
-    return {
-        "default_branch": default_branch,
-        "file_tree": file_tree,
-        "readme": readme,
-    }
+MAX_MERMAID_FIX_ATTEMPTS = 3
+MULTI_STAGE_INPUT_MULTIPLIER = 2
+INPUT_OVERHEAD_TOKENS = 3000
+ESTIMATED_OUTPUT_TOKENS = 8000
 
 
-class ApiRequest(BaseModel):
-    username: str
-    repo: str
-    api_key: str | None = None
-    github_pat: str | None = None
+class GenerateRequest(BaseModel):
+    username: str = Field(min_length=1)
+    repo: str = Field(min_length=1)
+    api_key: str | None = Field(default=None, min_length=1)
+    github_pat: str | None = Field(default=None, min_length=1)
+
+
+def _sse_message(payload: dict[str, Any]) -> str:
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+def _strip_mermaid_code_fences(text: str) -> str:
+    return text.replace("```mermaid", "").replace("```", "").strip()
+
+
+def _extract_component_mapping(response: str) -> str:
+    start_tag = "<component_mapping>"
+    end_tag = "</component_mapping>"
+    start_index = response.find(start_tag)
+    end_index = response.find(end_tag)
+    if start_index == -1 or end_index == -1:
+        return response
+    return response[start_index:end_index]
 
 
 def process_click_events(diagram: str, username: str, repo: str, branch: str) -> str:
-    def replace_path(match):
-        path = match.group(2).strip("\"'")
-        is_file = "." in path.split("/")[-1]
-
-        base_url = f"https://github.com/{username}/{repo}"
-        path_type = "blob" if is_file else "tree"
-        full_url = f"{base_url}/{path_type}/{branch}/{path}"
-
-        return f'click {match.group(1)} "{full_url}"'
-
     click_pattern = r'click ([^\s"]+)\s+"([^"]+)"'
+
+    def replace_path(match: re.Match[str]) -> str:
+        node_id = match.group(1)
+        trimmed_path = match.group(2).strip().strip("\"'")
+        is_file = "." in trimmed_path and not trimmed_path.endswith("/")
+        path_type = "blob" if is_file else "tree"
+        full_url = f"https://github.com/{username}/{repo}/{path_type}/{branch}/{trimmed_path}"
+        return f'click {node_id} "{full_url}"'
+
     return re.sub(click_pattern, replace_path, diagram)
 
 
+def _parse_request_payload(payload: Any) -> tuple[GenerateRequest | None, str | None]:
+    try:
+        parsed = GenerateRequest.model_validate(payload)
+        return parsed, None
+    except ValidationError:
+        return None, "Invalid request payload."
+
+
+def _get_github_data(username: str, repo: str, github_pat: str | None):
+    github_service = GitHubService(pat=github_pat)
+    return github_service.get_github_data(username, repo)
+
+
+async def _estimate_repo_input_tokens(
+    model: str,
+    file_tree: str,
+    readme: str,
+    api_key: str | None = None,
+) -> int:
+    try:
+        return await openai_service.count_input_tokens(
+            model=model,
+            system_prompt=SYSTEM_FIRST_PROMPT,
+            data={
+                "file_tree": file_tree,
+                "readme": readme,
+            },
+            api_key=api_key,
+            reasoning_effort="medium",
+        )
+    except Exception:
+        return openai_service.estimate_tokens(f"{file_tree}\n{readme}")
+
+
 @router.post("/cost")
-async def get_generation_cost(request: Request, body: ApiRequest):
+async def get_generation_cost(request: Request):
     timer = Timer()
     try:
-        github_data = get_cached_github_data(body.username, body.repo, body.github_pat)
-        file_tree = github_data["file_tree"]
-        readme = github_data["readme"]
+        payload = await request.json()
+        parsed, error = _parse_request_payload(payload)
+        if not parsed:
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "error": error,
+                    "error_code": "VALIDATION_ERROR",
+                }
+            )
 
-        file_tree_tokens = openai_service.count_tokens(file_tree)
-        readme_tokens = openai_service.count_tokens(readme)
+        github_data = _get_github_data(parsed.username, parsed.repo, parsed.github_pat)
+        model = get_model()
+        base_input_tokens = await _estimate_repo_input_tokens(
+            model=model,
+            file_tree=github_data.file_tree,
+            readme=github_data.readme,
+            api_key=parsed.api_key,
+        )
+        estimated_input_tokens = (
+            base_input_tokens * MULTI_STAGE_INPUT_MULTIPLIER + INPUT_OVERHEAD_TOKENS
+        )
+        estimated_output_tokens = ESTIMATED_OUTPUT_TOKENS
+        cost_usd, pricing_model, pricing = estimate_text_token_cost_usd(
+            model=model,
+            input_tokens=estimated_input_tokens,
+            output_tokens=estimated_output_tokens,
+        )
 
-        input_cost = ((file_tree_tokens * 2 + readme_tokens) + 3000) * 0.0000011
-        output_cost = 8000 * 0.0000044
-        estimated_cost = input_cost + output_cost
-
-        cost_string = f"${estimated_cost:.2f} USD"
+        response_payload = {
+            "ok": True,
+            "cost": f"${cost_usd:.2f} USD",
+            "model": model,
+            "pricing_model": pricing_model,
+            "estimated_input_tokens": estimated_input_tokens,
+            "estimated_output_tokens": estimated_output_tokens,
+            "pricing": {
+                "input_per_million_usd": pricing.input_per_million_usd,
+                "output_per_million_usd": pricing.output_per_million_usd,
+            },
+        }
         log_event(
             "generate.cost.success",
-            username=body.username,
-            repo=body.repo,
+            username=parsed.username,
+            repo=parsed.repo,
             elapsed_ms=timer.elapsed_ms(),
-            estimated_cost=cost_string,
+            model=model,
         )
-        return api_success(cost=cost_string)
-    except RateLimitError:
-        log_event(
-            "generate.cost.rate_limited",
-            username=body.username,
-            repo=body.repo,
-            elapsed_ms=timer.elapsed_ms(),
-        )
-        return api_error("RATE_LIMIT", "Rate limit exceeded. Please try again later.")
+        return JSONResponse(response_payload)
     except Exception as exc:
         log_event(
             "generate.cost.failed",
-            username=body.username,
-            repo=body.repo,
             elapsed_ms=timer.elapsed_ms(),
             error=str(exc),
         )
-        return api_error("COST_ESTIMATION_FAILED", str(exc))
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": str(exc) if isinstance(exc, Exception) else "Failed to estimate generation cost.",
+                "error_code": "COST_ESTIMATION_FAILED",
+            }
+        )
 
 
 @router.post("/stream")
-async def generate_stream(request: Request, body: ApiRequest):
+async def generate_stream(request: Request):
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": "Invalid request payload.",
+                "error_code": "VALIDATION_ERROR",
+            },
+            status_code=400,
+        )
+
+    parsed, error = _parse_request_payload(payload)
+    if not parsed:
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": error,
+                "error_code": "VALIDATION_ERROR",
+            },
+            status_code=400,
+        )
+
     async def event_generator():
         timer = Timer()
 
-        def sse(payload: dict):
-            return f"data: {json.dumps(payload)}\n\n"
+        def send(payload: dict[str, Any]) -> str:
+            return _sse_message(payload)
 
         try:
-            github_data = get_cached_github_data(body.username, body.repo, body.github_pat)
-            default_branch = github_data["default_branch"]
-            file_tree = github_data["file_tree"]
-            readme = github_data["readme"]
+            github_data = _get_github_data(parsed.username, parsed.repo, parsed.github_pat)
+            model = get_model()
+            token_count = await _estimate_repo_input_tokens(
+                model=model,
+                file_tree=github_data.file_tree,
+                readme=github_data.readme,
+                api_key=parsed.api_key,
+            )
 
-            yield sse(
+            yield send(
                 {
                     "status": "started",
                     "message": "Starting generation process...",
                 }
             )
-            await asyncio.sleep(0.1)
 
-            combined_content = f"{file_tree}\n{readme}"
-            token_count = openai_service.count_tokens(combined_content)
-
-            if 50000 < token_count < 195000 and not body.api_key:
-                yield sse(
+            if token_count > 50000 and token_count < 195000 and not parsed.api_key:
+                yield send(
                     {
                         "status": "error",
-                        "error": (
-                            "File tree and README combined exceeds token limit (50,000). "
-                            f"Current size: {token_count} tokens. This GitHub repository "
-                            "is too large for free generation, but you can continue by "
-                            "providing your own OpenAI API key."
-                        ),
+                        "error": "File tree and README combined exceeds token limit (50,000). This repository is too large for free generation. Provide your own OpenAI API key to continue.",
                         "error_code": "API_KEY_REQUIRED",
                     }
                 )
                 return
 
             if token_count > 195000:
-                yield sse(
+                yield send(
                     {
                         "status": "error",
-                        "error": (
-                            "Repository is too large (>195k tokens) for analysis. "
-                            f"Current size: {token_count} tokens."
-                        ),
+                        "error": "Repository is too large (>195k tokens) for analysis. Try a smaller repo.",
                         "error_code": "TOKEN_LIMIT_EXCEEDED",
                     }
                 )
                 return
 
-            yield sse(
+            yield send(
                 {
                     "status": "explanation_sent",
-                    "message": "Sending explanation request to o4-mini...",
+                    "message": f"Sending explanation request to {model}...",
                 }
             )
-            await asyncio.sleep(0.1)
-            yield sse(
+            await asyncio.sleep(0.08)
+            yield send(
                 {
                     "status": "explanation",
                     "message": "Analyzing repository structure...",
@@ -172,73 +257,56 @@ async def generate_stream(request: Request, body: ApiRequest):
 
             explanation = ""
             async for chunk in openai_service.stream_completion(
-                model="o4-mini",
+                model=model,
                 system_prompt=SYSTEM_FIRST_PROMPT,
                 data={
-                    "file_tree": file_tree,
-                    "readme": readme,
+                    "file_tree": github_data.file_tree,
+                    "readme": github_data.readme,
                 },
-                api_key=body.api_key,
+                api_key=parsed.api_key,
                 reasoning_effort="medium",
             ):
                 explanation += chunk
-                yield sse(
-                    {
-                        "status": "explanation_chunk",
-                        "chunk": chunk,
-                    }
-                )
+                yield send({"status": "explanation_chunk", "chunk": chunk})
 
-            yield sse(
+            yield send(
                 {
                     "status": "mapping_sent",
-                    "message": "Sending component mapping request to o4-mini...",
+                    "message": f"Sending component mapping request to {model}...",
                 }
             )
-            await asyncio.sleep(0.1)
-            yield sse(
+            await asyncio.sleep(0.08)
+            yield send(
                 {
                     "status": "mapping",
                     "message": "Creating component mapping...",
                 }
             )
 
-            full_second_response = ""
+            full_mapping_response = ""
             async for chunk in openai_service.stream_completion(
-                model="o4-mini",
+                model=model,
                 system_prompt=SYSTEM_SECOND_PROMPT,
                 data={
                     "explanation": explanation,
-                    "file_tree": file_tree,
+                    "file_tree": github_data.file_tree,
                 },
-                api_key=body.api_key,
+                api_key=parsed.api_key,
                 reasoning_effort="low",
             ):
-                full_second_response += chunk
-                yield sse(
-                    {
-                        "status": "mapping_chunk",
-                        "chunk": chunk,
-                    }
-                )
+                full_mapping_response += chunk
+                yield send({"status": "mapping_chunk", "chunk": chunk})
 
-            start_tag = "<component_mapping>"
-            end_tag = "</component_mapping>"
-            start_idx = full_second_response.find(start_tag)
-            end_idx = full_second_response.find(end_tag)
-            if start_idx != -1 and end_idx != -1:
-                component_mapping_text = full_second_response[start_idx:end_idx]
-            else:
-                component_mapping_text = full_second_response
+            component_mapping = _extract_component_mapping(full_mapping_response)
 
-            yield sse(
+            yield send(
                 {
                     "status": "diagram_sent",
-                    "message": "Sending diagram generation request to o4-mini...",
+                    "message": f"Sending diagram generation request to {model}...",
                 }
             )
-            await asyncio.sleep(0.1)
-            yield sse(
+            await asyncio.sleep(0.08)
+            yield send(
                 {
                     "status": "diagram",
                     "message": "Generating diagram...",
@@ -247,71 +315,139 @@ async def generate_stream(request: Request, body: ApiRequest):
 
             mermaid_code = ""
             async for chunk in openai_service.stream_completion(
-                model="o4-mini",
+                model=model,
                 system_prompt=SYSTEM_THIRD_PROMPT,
                 data={
                     "explanation": explanation,
-                    "component_mapping": component_mapping_text,
+                    "component_mapping": component_mapping,
                 },
-                api_key=body.api_key,
+                api_key=parsed.api_key,
                 reasoning_effort="low",
             ):
                 mermaid_code += chunk
-                yield sse(
+                yield send({"status": "diagram_chunk", "chunk": chunk})
+
+            candidate_diagram = _strip_mermaid_code_fences(mermaid_code)
+            validation_result = await asyncio.to_thread(
+                validate_mermaid_syntax,
+                candidate_diagram,
+            )
+            had_fix_loop = not validation_result.valid
+
+            if not validation_result.valid:
+                parser_feedback = format_validation_feedback(validation_result)
+                yield send(
                     {
-                        "status": "diagram_chunk",
-                        "chunk": chunk,
+                        "status": "diagram_fixing",
+                        "message": "Diagram generated. Mermaid syntax validation failed, starting auto-fix loop...",
+                        "parser_error": parser_feedback,
                     }
                 )
 
-            mermaid_code = mermaid_code.replace("```mermaid", "").replace("```", "")
+            attempt = 1
+            while (not validation_result.valid) and attempt <= MAX_MERMAID_FIX_ATTEMPTS:
+                parser_feedback = format_validation_feedback(validation_result)
+                yield send(
+                    {
+                        "status": "diagram_fix_attempt",
+                        "message": f"Fixing Mermaid syntax (attempt {attempt}/{MAX_MERMAID_FIX_ATTEMPTS})...",
+                        "fix_attempt": attempt,
+                        "fix_max_attempts": MAX_MERMAID_FIX_ATTEMPTS,
+                        "parser_error": parser_feedback,
+                    }
+                )
+
+                repaired_diagram = ""
+                async for chunk in openai_service.stream_completion(
+                    model=model,
+                    system_prompt=SYSTEM_FIX_MERMAID_PROMPT,
+                    data={
+                        "mermaid_code": candidate_diagram,
+                        "parser_error": parser_feedback,
+                        "explanation": explanation,
+                        "component_mapping": component_mapping,
+                    },
+                    api_key=parsed.api_key,
+                    reasoning_effort="low",
+                ):
+                    repaired_diagram += chunk
+                    yield send(
+                        {
+                            "status": "diagram_fix_chunk",
+                            "chunk": chunk,
+                            "fix_attempt": attempt,
+                            "fix_max_attempts": MAX_MERMAID_FIX_ATTEMPTS,
+                        }
+                    )
+
+                candidate_diagram = _strip_mermaid_code_fences(repaired_diagram)
+                yield send(
+                    {
+                        "status": "diagram_fix_validating",
+                        "message": f"Validating Mermaid syntax after attempt {attempt}/{MAX_MERMAID_FIX_ATTEMPTS}...",
+                        "fix_attempt": attempt,
+                        "fix_max_attempts": MAX_MERMAID_FIX_ATTEMPTS,
+                    }
+                )
+                validation_result = await asyncio.to_thread(
+                    validate_mermaid_syntax,
+                    candidate_diagram,
+                )
+                attempt += 1
+
+            if not validation_result.valid:
+                yield send(
+                    {
+                        "status": "error",
+                        "error": "Generated Mermaid remained syntactically invalid after auto-fix attempts. Please retry generation.",
+                        "error_code": "MERMAID_SYNTAX_UNRESOLVED",
+                        "parser_error": format_validation_feedback(validation_result),
+                    }
+                )
+                return
+
             processed_diagram = process_click_events(
-                mermaid_code,
-                body.username,
-                body.repo,
-                default_branch,
+                candidate_diagram,
+                parsed.username,
+                parsed.repo,
+                github_data.default_branch,
             )
 
-            log_event(
-                "generate.stream.success",
-                username=body.username,
-                repo=body.repo,
-                elapsed_ms=timer.elapsed_ms(),
-            )
-            yield sse(
+            if had_fix_loop:
+                yield send(
+                    {
+                        "status": "diagram_fixing",
+                        "message": "Mermaid syntax validated. Finalizing diagram output...",
+                    }
+                )
+
+            yield send(
                 {
                     "status": "complete",
                     "diagram": processed_diagram,
                     "explanation": explanation,
-                    "mapping": component_mapping_text,
-                }
-            )
-        except RateLimitError:
-            yield sse(
-                {
-                    "status": "error",
-                    "error": "Rate limit exceeded. Please try again later.",
-                    "error_code": "RATE_LIMIT",
+                    "mapping": component_mapping,
                 }
             )
             log_event(
-                "generate.stream.rate_limited",
-                username=body.username,
-                repo=body.repo,
+                "generate.stream.success",
+                username=parsed.username,
+                repo=parsed.repo,
                 elapsed_ms=timer.elapsed_ms(),
+                model=model,
             )
         except Exception as exc:
-            yield sse(
+            yield send(
                 {
                     "status": "error",
-                    "error": str(exc),
+                    "error": str(exc) if isinstance(exc, Exception) else "Streaming generation failed.",
                     "error_code": "STREAM_FAILED",
                 }
             )
             log_event(
                 "generate.stream.failed",
-                username=body.username,
-                repo=body.repo,
+                username=parsed.username,
+                repo=parsed.repo,
                 elapsed_ms=timer.elapsed_ms(),
                 error=str(exc),
             )
@@ -320,8 +456,9 @@ async def generate_stream(request: Request, body: ApiRequest):
         event_generator(),
         media_type="text/event-stream",
         headers={
-            "X-Accel-Buffering": "no",
-            "Cache-Control": "no-cache",
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "Cache-Control": "no-cache, no-transform",
             "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
         },
     )

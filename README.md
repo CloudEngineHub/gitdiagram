@@ -20,18 +20,22 @@ You can also replace `hub` with `diagram` in any Github URL to access its diagra
 ## ⚙️ Tech Stack
 
 - **Frontend**: Next.js, TypeScript, Tailwind CSS, ShadCN
-- **Backend**: Next.js Route Handlers (Vercel Functions), Server Actions
+- **Backend**: FastAPI (Railway), with Next.js Route Handlers available as a fallback path
 - **Database**: PostgreSQL (with Drizzle ORM)
 - **AI**: OpenAI GPT-5.2 (via `OPENAI_MODEL`)
-- **Deployment**: Vercel
+- **Deployment**: Vercel (frontend) + Railway (backend)
 - **CI/CD**: GitHub Actions
 - **Analytics**: PostHog, Api-Analytics
 
 ## 🔄 Backend Architecture Update
 
-GitDiagram now runs its active backend on Next.js Route Handlers (Vercel Functions) with streaming endpoints under `/api/generate/*`.
+GitDiagram now runs its primary generation backend on FastAPI (deployed on Railway).
 
-The original FastAPI backend remains intact under `/backend` as a legacy fallback if you ever want to switch back.
+Frontend calls are routed to the external backend by setting:
+- `NEXT_PUBLIC_USE_LEGACY_BACKEND=true`
+- `NEXT_PUBLIC_API_DEV_URL=https://<your-railway-domain>`
+
+The variable name contains "LEGACY" for backward compatibility, but it now points to the primary external backend in production.
 
 ## 🤔 About
 
@@ -39,9 +43,9 @@ I created this because I wanted to contribute to open-source projects but quickl
 
 Given any public (or private!) GitHub repository it generates diagrams in Mermaid.js with OpenAI's GPT-5.2! (Previously Claude 3.5 Sonnet)
 
-I extract information from the file tree and README for details and interactivity (you can click components to be taken to relevant files and directories)
+I extract information from the file tree and README for details and interactivity (you can click components to be taken to relevant files and directories).
 
-Most of what you might call the "processing" of this app is done with prompt engineering and a 3-step streaming pipeline. Legacy FastAPI implementation remains under `/backend` as historical architecture/reference.
+Most of what you might call the "processing" of this app is done with prompt engineering and a 3-step streaming pipeline in the FastAPI backend under `/backend`.
 
 ## 🔒 How to diagram private repositories
 
@@ -90,7 +94,7 @@ pnpm db:push
 
 You can view and interact with the database using `pnpm db:studio`
 
-6. Run Frontend (includes API backend)
+6. Run frontend
 
 ```bash
 pnpm dev
@@ -98,14 +102,14 @@ pnpm dev
 
 You can now access the website at `localhost:3000`.
 
-Optional: run legacy FastAPI backend for comparison/testing:
+Run FastAPI backend (recommended if you want parity with production):
 
 ```bash
 docker-compose up --build -d
 docker-compose logs -f api
 ```
 
-To route frontend calls to legacy backend, set:
+To route frontend calls to the external backend, set:
 - `NEXT_PUBLIC_USE_LEGACY_BACKEND=true`
 - `NEXT_PUBLIC_API_DEV_URL=http://localhost:8000`
 
@@ -119,7 +123,7 @@ pnpm test
 pnpm build
 ```
 
-Legacy backend docs: `docs/railway-backend.md`.
+Railway backend docs: `docs/railway-backend.md`.
 
 ## Contributing
 

@@ -47,9 +47,9 @@ const SequentialDots = () => {
   return (
     <span className="inline-flex w-8 justify-start">
       <span className="flex gap-0.5">
-        <span className="h-1 w-1 animate-[dot1_1.5s_steps(1)_infinite] rounded-full bg-purple-500" />
-        <span className="h-1 w-1 animate-[dot2_1.5s_steps(1)_infinite] rounded-full bg-purple-500" />
-        <span className="h-1 w-1 animate-[dot3_1.5s_steps(1)_infinite] rounded-full bg-purple-500" />
+        <span className="h-1 w-1 animate-[dot1_1.5s_steps(1)_infinite] rounded-full bg-[hsl(var(--neo-dot-active))]" />
+        <span className="h-1 w-1 animate-[dot2_1.5s_steps(1)_infinite] rounded-full bg-[hsl(var(--neo-dot-active))]" />
+        <span className="h-1 w-1 animate-[dot3_1.5s_steps(1)_infinite] rounded-full bg-[hsl(var(--neo-dot-active))]" />
       </span>
     </span>
   );
@@ -62,7 +62,9 @@ const StepDots = ({ currentStep }: { currentStep: number }) => {
         <div
           key={step}
           className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${
-            step <= currentStep ? "bg-purple-500" : "bg-purple-200"
+            step <= currentStep
+              ? "bg-[hsl(var(--neo-dot-active))]"
+              : "bg-[hsl(var(--neo-dot-inactive))]"
           }`}
         />
       ))}
@@ -213,19 +215,19 @@ export default function Loading({
 
   return (
     <div className="mx-auto w-full max-w-4xl p-4">
-      <div className="overflow-hidden rounded-xl border-2 border-purple-200 bg-purple-50/30 backdrop-blur-sm">
-        <div className="border-b border-purple-100 bg-purple-100/50 px-6 py-3">
+      <div className="overflow-hidden rounded-xl border-2 border-neutral-300 bg-white/70 backdrop-blur-sm dark:border-[#3b4656] dark:bg-[linear-gradient(160deg,#252d38,#212833)]">
+        <div className="border-b border-neutral-300 bg-neutral-100/80 px-6 py-3 dark:border-[#3b4656] dark:bg-[#2f3846]/90">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-purple-500">
+              <span className="text-sm font-medium text-neutral-700 dark:text-[hsl(var(--neo-button-hover))]">
                 {statusDisplay.text}
               </span>
               {statusDisplay.isReasoning && <SequentialDots />}
             </div>
-            <div className="flex items-center gap-3 text-xs font-medium text-purple-500">
+            <div className="flex items-center gap-3 text-xs font-medium text-neutral-700 dark:text-slate-200">
               {cost && <span>Estimated cost: {cost}</span>}
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-purple-100 px-2 py-0.5">
+                <span className="rounded-full bg-neutral-200 px-2 py-0.5 dark:bg-[#374151]">
                   Step {getStepNumber(status)}/3
                 </span>
                 <StepDots currentStep={getStepNumber(status)} />
@@ -241,31 +243,35 @@ export default function Loading({
             {reasoningMessage &&
               statusDisplay.isReasoning &&
               (explanation ?? mapping ?? diagram) && (
-                <div className="rounded-lg bg-purple-100/50 p-4 text-sm text-purple-500">
+                <div className="rounded-lg bg-neutral-100 p-4 text-sm text-neutral-700 dark:bg-[#2b3442] dark:text-slate-200">
                   <div className="flex items-center gap-2">
                     <p className="font-medium">Reasoning</p>
                     <SequentialDots />
                   </div>
                   <p className="mt-2 leading-relaxed">{reasoningMessage}</p>
                 </div>
-              )}
+            )}
             {explanation && (
-              <div className="rounded-lg bg-white/50 p-4 text-sm text-gray-600">
-                <p className="font-medium text-purple-500">Explanation:</p>
+              <div className="rounded-lg bg-white/60 p-4 text-sm text-gray-700 dark:bg-[#293241]/80 dark:text-slate-200">
+                <p className="font-medium text-neutral-800 dark:text-[hsl(var(--neo-link-hover))]">
+                  Explanation:
+                </p>
                 <p className="mt-2 leading-relaxed">{explanation}</p>
               </div>
             )}
             {mapping && (
-              <div className="rounded-lg bg-white/50 p-4 text-sm text-gray-600">
-                <p className="font-medium text-purple-500">Mapping:</p>
+              <div className="rounded-lg bg-white/60 p-4 text-sm text-gray-700 dark:bg-[#293241]/80 dark:text-slate-200">
+                <p className="font-medium text-neutral-800 dark:text-[hsl(var(--neo-link-hover))]">
+                  Mapping:
+                </p>
                 <pre className="mt-2 overflow-x-auto whitespace-pre-wrap leading-relaxed">
                   {mapping}
                 </pre>
               </div>
             )}
             {diagram && (
-              <div className="rounded-lg bg-white/50 p-4 text-sm text-gray-600">
-                <p className="font-medium text-purple-500">
+              <div className="rounded-lg bg-white/60 p-4 text-sm text-gray-700 dark:bg-[#293241]/80 dark:text-slate-200">
+                <p className="font-medium text-neutral-800 dark:text-[hsl(var(--neo-link-hover))]">
                   Mermaid.js diagram:
                 </p>
                 <pre className="mt-2 overflow-x-auto whitespace-pre-wrap leading-relaxed">
@@ -274,28 +280,28 @@ export default function Loading({
               </div>
             )}
             {hasFixTelemetry && (
-              <div className="rounded-lg border border-purple-200 bg-white/70 p-4 text-sm text-gray-700">
-                <p className="font-medium text-purple-500">
+              <div className="rounded-lg border border-neutral-300 bg-white/80 p-4 text-sm text-gray-700 dark:border-[#3f4a5a] dark:bg-[#2a3341]/85 dark:text-slate-200">
+                <p className="font-medium text-neutral-800 dark:text-[hsl(var(--neo-link-hover))]">
                   Syntax Repair Loop
                 </p>
                 {typeof fixAttempt === "number" &&
                   typeof fixMaxAttempts === "number" && (
-                    <p className="mt-1 text-xs text-purple-500">
+                    <p className="mt-1 text-xs text-neutral-600 dark:text-slate-300">
                       Attempt {fixAttempt}/{fixMaxAttempts}
                     </p>
                   )}
                 {message && <p className="mt-2 leading-relaxed">{message}</p>}
                 {parserError && (
-                  <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-md bg-purple-50 p-3 text-xs text-gray-700">
+                  <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-md bg-neutral-100 p-3 text-xs text-gray-700 dark:bg-[#1f2631] dark:text-slate-200">
                     {parserError}
                   </pre>
                 )}
                 {fixDiagramDraft && (
                   <div className="mt-3">
-                    <p className="mb-2 text-xs font-medium text-purple-500">
+                    <p className="mb-2 text-xs font-medium text-neutral-800 dark:text-[hsl(var(--neo-link-hover))]">
                       Candidate Mermaid fix (streaming)
                     </p>
-                    <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-purple-50 p-3 text-xs text-gray-700">
+                    <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-neutral-100 p-3 text-xs text-gray-700 dark:bg-[#1f2631] dark:text-slate-200">
                       {fixDiagramDraft}
                     </pre>
                   </div>
