@@ -41,42 +41,42 @@
     --neo-input-bg: 270 92% 89%;
   }
   .dark {
-    --background: 222 18% 14%;
-    --foreground: 212 24% 92%;
-    --card: 222 17% 18%;
-    --card-foreground: 212 24% 92%;
-    --popover: 222 17% 18%;
-    --popover-foreground: 212 24% 92%;
-    --primary: 212 24% 92%;
-    --primary-foreground: 222 18% 14%;
-    --secondary: 221 14% 24%;
-    --secondary-foreground: 212 24% 92%;
-    --muted: 221 14% 24%;
-    --muted-foreground: 210 14% 72%;
-    --accent: 221 16% 26%;
-    --accent-foreground: 212 24% 92%;
+    --background: 264 22% 9%;
+    --foreground: 270 25% 93%;
+    --card: 264 20% 13%;
+    --card-foreground: 270 25% 93%;
+    --popover: 264 20% 13%;
+    --popover-foreground: 270 25% 93%;
+    --primary: 270 25% 93%;
+    --primary-foreground: 264 22% 9%;
+    --secondary: 264 18% 18%;
+    --secondary-foreground: 270 25% 93%;
+    --muted: 264 18% 18%;
+    --muted-foreground: 270 15% 65%;
+    --accent: 264 20% 22%;
+    --accent-foreground: 270 25% 93%;
     --destructive: 0 62.8% 40%;
     --destructive-foreground: 0 0% 98%;
-    --border: 221 14% 34%;
-    --input: 221 14% 30%;
-    --ring: 196 72% 68%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --neo-panel: 222 19% 19%;
-    --neo-panel-muted: 221 16% 24%;
-    --neo-button: 194 72% 64%;
-    --neo-button-hover: 194 78% 72%;
-    --neo-subtle: 39 58% 71%;
-    --neo-subtle-muted: 38 38% 58%;
-    --neo-link: 40 88% 68%;
-    --neo-link-hover: 48 95% 76%;
-    --neo-soft-text: 212 18% 82%;
-    --neo-dot-active: 194 72% 64%;
-    --neo-dot-inactive: 220 10% 44%;
-    --neo-input-bg: 222 20% 16%;
+    --border: 264 28% 22%;
+    --input: 264 22% 17%;
+    --ring: 270 85% 68%;
+    --chart-1: 270 85% 68%;
+    --chart-2: 280 75% 72%;
+    --chart-3: 260 70% 60%;
+    --chart-4: 290 65% 65%;
+    --chart-5: 250 80% 70%;
+    --neo-panel: 264 20% 13%;
+    --neo-panel-muted: 264 18% 17%;
+    --neo-button: 270 85% 68%;
+    --neo-button-hover: 270 90% 75%;
+    --neo-subtle: 270 35% 72%;
+    --neo-subtle-muted: 270 28% 62%;
+    --neo-link: 280 80% 72%;
+    --neo-link-hover: 275 90% 80%;
+    --neo-soft-text: 270 18% 72%;
+    --neo-dot-active: 270 85% 68%;
+    --neo-dot-inactive: 264 20% 32%;
+    --neo-input-bg: 264 24% 11%;
   }
 }
 @layer base {
@@ -94,16 +94,16 @@
   .dark body {
     background-image:
       radial-gradient(
-        circle at 14% 20%,
-        hsl(194 72% 50% / 0.14) 0%,
-        transparent 38%
+        ellipse at 18% 5%,
+        hsl(270 60% 20% / 0.4) 0%,
+        transparent 52%
       ),
       radial-gradient(
-        circle at 84% 78%,
-        hsl(39 88% 60% / 0.12) 0%,
-        transparent 36%
+        ellipse at 85% 90%,
+        hsl(280 50% 16% / 0.25) 0%,
+        transparent 46%
       ),
-      linear-gradient(145deg, #171b22 0%, #202632 45%, #1a1f28 100%);
+      linear-gradient(135deg, hsl(265 25% 10%) 0%, hsl(258 20% 8%) 100%);
     background-attachment: fixed;
   }
 }
@@ -123,7 +123,7 @@
   .neo-button {
     border: 3px solid #000 !important;
     background: hsl(var(--neo-button)) !important;
-    color: #000;
+    color: #000 !important;
     box-shadow: 4px 4px 0 0 #000 !important;
     transition:
       transform 0.2s ease,
@@ -138,7 +138,7 @@
   .neo-button-muted {
     border: 3px solid #000 !important;
     background: hsl(var(--neo-subtle-muted)) !important;
-    color: #000;
+    color: #000 !important;
     box-shadow: 4px 4px 0 0 #000 !important;
     transition:
       transform 0.2s ease,
@@ -153,8 +153,11 @@
   .neo-input {
     border: 3px solid #000 !important;
     box-shadow: 4px 4px 0 0 #000 !important;
-    background: hsl(var(--neo-input-bg)) !important;
     color: hsl(var(--foreground));
+  }
+
+  .dark .neo-input {
+    background: hsl(var(--neo-input-bg)) !important;
   }
 
   .neo-link {
@@ -167,16 +170,16 @@
   }
 
   .dark .neo-panel,
-  .dark .neo-button,
-  .dark .neo-button-muted,
   .dark .neo-input {
-    border-color: #0f131a !important;
-    box-shadow: 7px 7px 0 0 #10151d !important;
+    border-color: black !important;
+    box-shadow: 8px 8px 0 0 #0d0a19 !important;
   }
 
   .dark .neo-button,
   .dark .neo-button-muted {
-    color: #0b1115;
+    border-color: #1a0d30 !important;
+    box-shadow: 4px 4px 0 0 #0d0a19 !important;
+    color: #0d0a19 !important;
   }
 }
 

@@ -38,7 +38,7 @@ export function Header() {
   };
 
   return (
-    <header className="border-b-[3px] border-black dark:border-[#0f131a] dark:bg-[linear-gradient(90deg,#1a2029,#232b37)]">
+    <header className="border-b-[3px] border-black dark:border-black">
       <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4 sm:px-8">
         <Link href="/" className="flex items-center">
           <span className="text-lg font-semibold sm:text-xl">
@@ -71,6 +71,7 @@ export function Header() {
             <span className="sm:hidden">Private Repos</span>
             <span className="hidden sm:inline">Private Repos</span>
           </button>
+          <ThemeToggle />
           <Link
             href="https://github.com/ahmedkhaleel2004/gitdiagram"
             className="flex items-center gap-1 text-sm font-medium text-black transition-transform hover:translate-y-[-2px] hover:text-purple-600 dark:text-neutral-200 dark:hover:text-[hsl(var(--neo-link-hover))] sm:gap-2"
@@ -82,7 +83,6 @@ export function Header() {
             <span className="text-amber-400 dark:text-[hsl(var(--neo-link))]">★</span>
             {formatStarCount(starCount)}
           </span>
-          <ThemeToggle />
         </nav>
 
         <PrivateReposDialog

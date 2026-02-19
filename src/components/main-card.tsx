@@ -116,8 +116,8 @@ export default function MainCard({
                       }
                       className={`flex items-center justify-between gap-2 rounded-md border-[3px] border-black px-4 py-2 font-medium text-black transition-colors sm:max-w-[250px] dark:text-black ${
                         isExampleRepoSelected
-                          ? "cursor-not-allowed bg-purple-200 opacity-70 dark:bg-slate-700 dark:text-slate-200"
-                          : "bg-purple-300 hover:bg-purple-400 dark:border-[#0f131a] dark:bg-[hsl(var(--neo-subtle-muted))] dark:hover:bg-[hsl(var(--neo-subtle))]"
+                          ? "cursor-not-allowed bg-purple-200 opacity-70 dark:bg-[#251b3a] dark:text-[hsl(var(--foreground))]"
+                          : "bg-purple-300 hover:bg-purple-400 dark:border-[#2d1d4e] dark:bg-[hsl(var(--neo-subtle-muted))] dark:hover:bg-[hsl(var(--neo-subtle))]"
                       }`}
                       onClick={(e) => {
                         e.preventDefault();
@@ -138,8 +138,8 @@ export default function MainCard({
                         }}
                         className={`flex cursor-pointer items-center justify-between gap-2 rounded-md border-[3px] border-black px-4 py-2 font-medium text-black transition-colors sm:max-w-[250px] dark:text-black ${
                           activeDropdown === "export"
-                            ? "bg-purple-400 dark:border-[#0f131a] dark:bg-[hsl(var(--neo-button))]"
-                            : "bg-purple-300 hover:bg-purple-400 dark:border-[#0f131a] dark:bg-[hsl(var(--neo-subtle-muted))] dark:hover:bg-[hsl(var(--neo-button-hover))]"
+                            ? "bg-purple-400 dark:border-[#2d1d4e] dark:bg-[hsl(var(--neo-button))]"
+                            : "bg-purple-300 hover:bg-purple-400 dark:border-[#2d1d4e] dark:bg-[hsl(var(--neo-subtle-muted))] dark:hover:bg-[hsl(var(--neo-button-hover))]"
                         }`}
                       >
                         <span>Export Diagram</span>
@@ -201,7 +201,7 @@ export default function MainCard({
                 <Button
                   key={name}
                   variant="outline"
-                  className="border-2 border-black bg-purple-400 text-sm text-black transition-transform hover:-translate-y-0.5 hover:transform hover:bg-purple-300 dark:border-[#0f131a] dark:bg-[hsl(var(--neo-panel-muted))] dark:text-neutral-100 dark:hover:bg-[hsl(var(--neo-button))] dark:hover:text-black sm:text-base"
+                  className="border-2 border-black bg-purple-400 text-sm text-black transition-transform hover:-translate-y-0.5 hover:transform hover:bg-purple-300 dark:border-black dark:bg-[hsl(var(--neo-panel-muted))] dark:text-[hsl(var(--foreground))] dark:hover:bg-[hsl(var(--neo-button))] dark:hover:text-[#0d0a19] sm:text-base"
                   onClick={(e) => handleExampleClick(path, e)}
                 >
                   {name}
@@ -215,7 +215,7 @@ export default function MainCard({
       {/* Decorative Sparkle */}
       <div className="absolute -bottom-8 -left-12 hidden sm:block">
         <Sparkles
-          className="h-20 w-20 fill-sky-400 text-black dark:fill-[hsl(var(--neo-button))] dark:text-neutral-100"
+          className="h-20 w-20 fill-sky-400 text-black dark:fill-[hsl(var(--neo-button))] dark:text-[hsl(var(--background))]"
           strokeWidth={0.6}
           style={{ transform: "rotate(-15deg)" }}
         />
